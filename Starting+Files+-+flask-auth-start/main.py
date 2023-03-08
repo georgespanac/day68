@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, send_from_directory
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from flask_sqlalchemy import SQLAlchemy
@@ -12,6 +12,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'any-secret-key-you-choose'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'static/files/'
+app.config['CHEAT_SHEET_FILE_NAME'] = 'cheat_sheet.pdf'
+
 db = SQLAlchemy(app)
 Bootstrap(app)
 
@@ -64,7 +67,8 @@ def logout():
 
 @app.route('/download')
 def download():
-    pass
+    return send_from_directory(app.config['UPLOAD_FOLDER'],
+                               app.config['CHEAT_SHEET_FILE_NAME'], as_attachment=True)
 
 
 if __name__ == "__main__":
