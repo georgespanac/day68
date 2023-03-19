@@ -1,13 +1,15 @@
-from flask import Flask, render_template, redirect, url_for, send_from_directory
+from flask import Flask, render_template, redirect, url_for, send_from_directory, request
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
+from flask_login import UserMixin, LoginManager, login_user
+from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.fields import EmailField
 from wtforms.validators import DataRequired, Email
 
 app = Flask(__name__)
+login_manager = LoginManager()
 
 app.config['SECRET_KEY'] = 'any-secret-key-you-choose'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
@@ -27,6 +29,10 @@ class User(UserMixin, db.Model):
 #Line below only required once, when creating DB. 
 
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 class RegisterForm(FlaskForm):
     name = StringField(label='name', validators=[DataRequired()])
     email = EmailField(label='email', validators=[DataRequired(), Email()])
@@ -42,7 +48,13 @@ def home():
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
-        user = User(email=form.email.data, name=form.name.data, password=form.password.data)
+        hash_and_salted_password = generate_password_hash(
+            form.password.data,
+            method='pbkdf2:sha256',
+            salt_length=8
+        )
+        user = User(email=form.email.data, name=form.name.data, password=hash_and_salted_password)
+
         db.session.add(user)
         db.session.commit()
         return redirect(url_for("secrets"))
@@ -50,10 +62,21 @@ def register():
         return render_template("register.html", form=form)
 
 
-@app.route('/login')
+@app.route('/login', methods=["GET", "POST"])
 def login():
-    return render_template("login.html")
+    if request.method == "POST":
+        email = request.form.get('email')
+        password = request.form.get('password')
 
+        # Find user by email entered.
+        user = User.query.filter_by(email=email).first()
+
+        # Check stored password hash against entered password hashed.
+        if check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for('secrets'))
+
+    return render_template("login.html")
 
 @app.route('/secrets')
 def secrets():
@@ -72,4 +95,5 @@ def download():
 
 
 if __name__ == "__main__":
+    login_manager.init_app(app)
     app.run(debug=True)
