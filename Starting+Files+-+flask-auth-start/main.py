@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, send_from_directory, request
+from flask import Flask, render_template, redirect, url_for, send_from_directory, request, flash
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from flask_sqlalchemy import SQLAlchemy
@@ -70,11 +70,15 @@ def login():
 
         # Find user by email entered.
         user = User.query.filter_by(email=email).first()
-
-        # Check stored password hash against entered password hashed.
-        if check_password_hash(user.password, password):
-            login_user(user)
-            return redirect(url_for('secrets'))
+        if user:
+            # Check stored password hash against entered password hashed.
+            if check_password_hash(user.password, password):
+                login_user(user)
+                return redirect(url_for('secrets'))
+            else:
+                flash('invalid password', 'error')
+        else:
+            flash('email not registered', 'error')
 
     return render_template("login.html")
 
