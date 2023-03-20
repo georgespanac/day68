@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, send_from_directory
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, LoginManager, login_user
+from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.fields import EmailField
@@ -41,7 +41,7 @@ class RegisterForm(FlaskForm):
 
 @app.route('/')
 def home():
-    return render_template("index.html")
+    return render_template("index.html", logged_in=current_user.is_authenticated)
 
 
 @app.route('/register', methods=["GET", "POST"])
@@ -80,19 +80,22 @@ def login():
         else:
             flash('email not registered', 'error')
 
-    return render_template("login.html")
+    return render_template("login.html", logged_in=current_user.is_authenticated)
 
 @app.route('/secrets')
+@login_required
 def secrets():
-    return render_template("secrets.html")
+    return render_template("secrets.html", logged_in=True)
 
 
 @app.route('/logout')
 def logout():
-    pass
+    logout_user()
+    return redirect(url_for('home'))
 
 
 @app.route('/download')
+@login_required
 def download():
     return send_from_directory(app.config['UPLOAD_FOLDER'],
                                app.config['CHEAT_SHEET_FILE_NAME'], as_attachment=True)
